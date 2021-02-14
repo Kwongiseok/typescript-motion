@@ -1,5 +1,12 @@
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
 import { BaseComponenet } from "./../component.js";
-export class PageItemComponent extends BaseComponenet {
+import { EnableDragging, EnableDrop, EnableHover, } from "../../decorators/draggable.js";
+let PageItemComponent = class PageItemComponent extends BaseComponenet {
     constructor() {
         super(`
     <li draggable="true" class="page-item">
@@ -12,30 +19,25 @@ export class PageItemComponent extends BaseComponenet {
         closeBtn.onclick = () => {
             this.closeListner && this.closeListner();
         };
-        this.element.addEventListener("dragstart", (event) => {
-            this.onDragStart(event);
-        });
-        this.element.addEventListener("dragend", (event) => {
-            this.onDragEnd(event);
-        });
-        this.element.addEventListener("dragenter", (event) => {
-            this.onDragEnter(event);
-        });
-        this.element.addEventListener("dragleave", (event) => {
-            this.onDragLeave(event);
-        });
     }
     onDragStart(_) {
         this.notifyDragObservers("start");
+        this.element.classList.add("lifted");
     }
     onDragEnd(_) {
         this.notifyDragObservers("stop");
+        this.element.classList.remove("lifted");
     }
     onDragEnter(_) {
         this.notifyDragObservers("enter");
+        this.element.classList.add("drop-area");
     }
     onDragLeave(_) {
         this.notifyDragObservers("leave");
+        this.element.classList.remove("drop-area");
+    }
+    onDropped() {
+        this.element.classList.remove("drop-area");
     }
     notifyDragObservers(state) {
         this.dragStateListener && this.dragStateListener(this, state);
@@ -61,24 +63,20 @@ export class PageItemComponent extends BaseComponenet {
     getBoundingRect() {
         return this.element.getBoundingClientRect();
     }
-}
-export class PageComponent extends BaseComponenet {
+};
+PageItemComponent = __decorate([
+    EnableDragging,
+    EnableHover
+], PageItemComponent);
+export { PageItemComponent };
+let PageComponent = class PageComponent extends BaseComponenet {
     constructor(pageItemConstructor) {
         super('<ul class="page"></ul>');
         this.pageItemConstructor = pageItemConstructor;
         this.children = new Set();
-        this.element.addEventListener("dragover", (event) => {
-            this.onDragOver(event);
-        });
-        this.element.addEventListener("drop", (event) => {
-            this.onDrop(event);
-        });
     }
-    onDragOver(event) {
-        event.preventDefault();
-    }
+    onDragOver(_) { }
     onDrop(event) {
-        event.preventDefault();
         if (!this.dropTarget) {
             return;
         }
@@ -88,6 +86,7 @@ export class PageComponent extends BaseComponenet {
             this.dragTarget.removeFrom(this.element);
             this.dropTarget.attach(this.dragTarget, dropY < srcElement.y ? "beforebegin" : "afterend");
         }
+        this.dropTarget.onDropped();
     }
     addChild(section) {
         const item = new this.pageItemConstructor();
@@ -124,4 +123,8 @@ export class PageComponent extends BaseComponenet {
             section.muteChildren(state);
         });
     }
-}
+};
+PageComponent = __decorate([
+    EnableDrop
+], PageComponent);
+export { PageComponent };

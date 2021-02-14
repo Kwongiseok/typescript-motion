@@ -1,4 +1,11 @@
 import { BaseComponenet, Component } from "./../component.js";
+import { Hoverable, Droppable } from "./../common/type";
+import {
+  EnableDragging,
+  EnableDrop,
+  EnableHover,
+} from "../../decorators/draggable.js";
+import { Draggable } from "../common/type.js";
 
 export interface Composable {
   addChild(child: Component): void;
@@ -11,11 +18,12 @@ type OnDragStateListener<T extends Component> = (
   state: DragState
 ) => void;
 
-interface SectionContainer extends Component, Composable {
+interface SectionContainer extends Component, Composable, Draggable, Hoverable {
   setOnCloseListener(listener: OnCloseListener): void;
   setOnDragStateListener(listener: OnDragStateListener<SectionContainer>): void;
   muteChildren(state: "mute" | "unmute"): void;
   getBoundingRect(): DOMRect;
+  onDropped(): void;
 }
 
 type SectionContainerConstructor = {
@@ -27,6 +35,8 @@ type SectionContainerConstructor = {
 
 // } 이런식으로 다른 타입의 페이지 아이템 Component를 만들 때 사용할 수 있다. 확장성이 좋다!
 
+@EnableDragging
+@EnableHover
 export class PageItemComponent
   extends BaseComponenet<HTMLElement>
   implements SectionContainer {
@@ -45,31 +55,25 @@ export class PageItemComponent
     closeBtn.onclick = () => {
       this.closeListner && this.closeListner();
     };
-    this.element.addEventListener("dragstart", (event: DragEvent) => {
-      this.onDragStart(event);
-    });
-    this.element.addEventListener("dragend", (event: DragEvent) => {
-      this.onDragEnd(event);
-    });
-
-    this.element.addEventListener("dragenter", (event: DragEvent) => {
-      this.onDragEnter(event);
-    });
-    this.element.addEventListener("dragleave", (event: DragEvent) => {
-      this.onDragLeave(event);
-    });
   }
   onDragStart(_: DragEvent) {
     this.notifyDragObservers("start");
+    this.element.classList.add("lifted");
   }
   onDragEnd(_: DragEvent) {
     this.notifyDragObservers("stop");
+    this.element.classList.remove("lifted");
   }
   onDragEnter(_: DragEvent) {
     this.notifyDragObservers("enter");
+    this.element.classList.add("drop-area");
   }
   onDragLeave(_: DragEvent) {
     this.notifyDragObservers("leave");
+    this.element.classList.remove("drop-area");
+  }
+  onDropped() {
+    this.element.classList.remove("drop-area");
   }
   notifyDragObservers(state: DragState) {
     this.dragStateListener && this.dragStateListener(this, state);
@@ -102,26 +106,20 @@ export class PageItemComponent
     return this.element.getBoundingClientRect();
   }
 }
+
+@EnableDrop
 export class PageComponent
   extends BaseComponenet<HTMLUListElement>
-  implements Composable {
+  implements Composable, Droppable {
   private children = new Set<SectionContainer>();
   private dropTarget?: SectionContainer;
   private dragTarget?: SectionContainer;
   constructor(private pageItemConstructor: SectionContainerConstructor) {
     super('<ul class="page"></ul>');
-    this.element.addEventListener("dragover", (event: DragEvent) => {
-      this.onDragOver(event);
-    });
-    this.element.addEventListener("drop", (event: DragEvent) => {
-      this.onDrop(event);
-    });
   }
-  onDragOver(event: DragEvent) {
-    event.preventDefault();
-  }
+  onDragOver(_: DragEvent): void {}
+
   onDrop(event: DragEvent) {
-    event.preventDefault();
     // 여기에서 위치를 바꿔준다.
     if (!this.dropTarget) {
       return;
@@ -135,6 +133,7 @@ export class PageComponent
         dropY < srcElement.y ? "beforebegin" : "afterend"
       );
     }
+    this.dropTarget.onDropped();
   }
   addChild(section: Component) {
     const item = new this.pageItemConstructor();
