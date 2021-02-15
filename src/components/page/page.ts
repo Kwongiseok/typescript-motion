@@ -35,6 +35,7 @@ type SectionContainerConstructor = {
 
 // } 이런식으로 다른 타입의 페이지 아이템 Component를 만들 때 사용할 수 있다. 확장성이 좋다!
 
+// 좀 더 공부해야될 부분
 @EnableDragging
 @EnableHover
 export class PageItemComponent
